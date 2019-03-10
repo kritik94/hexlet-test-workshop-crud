@@ -42,7 +42,7 @@ class TicketsTest extends TestCase
         $responseStore = $this->post(route('tickets.store'), [
             'title' => $title,
             'description' => $description,
-            'reporter' => $email
+            'reporter' => $email,
         ]);
         $responseStore->assertStatus(201);
 

@@ -8,6 +8,7 @@ before_script:
 install:
   - cp .env.example .env
   - make install
+  - ./artisan key:generate
 script:
   - make lint
   - make test
