@@ -12,6 +12,12 @@ class TicketsTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function testIndex()
+    {
+        $response = $this->get(route('tickets.index'));
+        $response->assertStatus(200);
+    }
+
     /**
      * A basic feature test example.
      *
@@ -19,17 +25,19 @@ class TicketsTest extends TestCase
      */
     public function testCreate()
     {
+        factory(\App\Ticket::class)->state('opened')->create();
+
+        $responseCreate = $this->get(route('tickets.create'));
+        $responseCreate->assertStatus(200);
+    }
+
+    public function testStore()
+    {
         $faker = Faker\Factory::create();
 
         $title = $faker->sentence();
         $description = $faker->paragraph();
         $email = $faker->email();
-
-        $responseIndex = $this->get(route('tickets.index'));
-        $responseIndex->assertStatus(200);
-
-        $responseCreate = $this->get(route('tickets.create'));
-        $responseCreate->assertStatus(200);
 
         $responseStore = $this->post(route('tickets.store'), [
             'title' => $title,
@@ -38,56 +46,48 @@ class TicketsTest extends TestCase
         ]);
         $responseStore->assertStatus(201);
 
-        $this->assertDatabaseHas('tickets', [
-            'title' => $title,
-            'reporter' => $email,
-            'description' => $description,
-            'status' => Ticket::STATUS_OPENED,
-            'rating' => 0,
-        ]);
+        $this->assertTrue(Ticket::where('title', $title)->exists());
     }
 
-    public function testChangeDescription()
+    public function testShow()
     {
-        $faker = Faker\Factory::create();
-        $anotherDescription = $faker->paragraph();
-
-        $ticket = factory(\App\Ticket::class)
-            ->state('opened')
-            ->create();
+        $ticket = factory(\App\Ticket::class)->state('opened')->create();
 
         $responseShow = $this->get(route('tickets.show', ['ticket' => $ticket]));
         $responseShow->assertStatus(200);
+    }
+
+    public function testEdit()
+    {
+        $ticket = factory(\App\Ticket::class)->state('opened')->create();
 
         $responseEdit = $this->get(route('tickets.edit', ['ticket' => $ticket]));
         $responseEdit->assertStatus(200);
+    }
+
+    public function testUpdate()
+    {
+        $faker = Faker\Factory::create();
+        $anotherDescription = $faker->paragraph();
+        $ticket = factory(\App\Ticket::class)->state('opened')->create();
 
         $responseUpdate = $this->put(route('tickets.update', ['ticket' => $ticket]), [
             'description' => $anotherDescription,
         ]);
         $responseUpdate->assertStatus(302);
 
-        $this->assertDatabaseHas('tickets', [
-            'id' => $ticket->id,
-            'description' => $anotherDescription,
-        ]);
+        $freshTicket = $ticket->fresh();
+
+        $this->assertEquals($anotherDescription, $freshTicket->description);
     }
 
     public function testDelete()
     {
-        $ticket = factory(\App\Ticket::class)
-                ->state('opened')
-                ->create();
-
-        $responseShow = $this->get(route('tickets.show', ['ticket' => $ticket]));
-        $responseShow->assertStatus(200);
+        $ticket = factory(\App\Ticket::class)->state('opened')->create();
 
         $responseDelete = $this->delete(route('tickets.destroy', ['ticket' => $ticket]));
         $responseDelete->assertStatus(302);
 
-        $this->assertDatabaseMissing('tickets', ['id' => $ticket->id]);
-
-        $responseNotFound = $this->get(route('tickets.show', ['ticket' => $ticket]));
-        $responseNotFound->assertStatus(404);
+        $this->assertFalse(Ticket::where('id', $ticket->id)->exists());
     }
 }
